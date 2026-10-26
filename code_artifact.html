@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>학교 특별실 예약 시스템</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Noto Sans KR) -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #f8fafc;
+        }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-indigo-600 text-white shadow-md sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid font-bold text-2xl fa-school-flag text-indigo-200"></i>
+                <h1 class="text-xl font-bold tracking-tight">특별실 예약 시스템</h1>
+            </div>
+            
+            <div class="flex items-center space-x-3 text-sm">
+                <!-- Batch Routine Schedule Button -->
+                <button id="btnOpenRoutine" class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-700 rounded-lg flex items-center space-x-2 transition duration-150 border border-indigo-400">
+                    <i class="fa-regular fa-calendar-check text-xs text-indigo-200"></i>
+                    <span>고정 시간표 일괄 등록</span>
+                </button>
+                <!-- Gas Integration Status/Settings -->
+                <button id="btnOpenSettings" class="px-3 py-1.5 bg-indigo-700 hover:bg-indigo-800 rounded-lg flex items-center space-x-2 transition duration-150 border border-indigo-500">
+                    <i class="fa-solid fa-link text-xs text-indigo-300"></i>
+                    <span>구글시트 연동 설정</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row gap-6">
+
+        <!-- Sidebar: Room Selection & Today Quick View -->
+        <aside class="w-full md:w-64 flex-shrink-0 space-y-6">
+            <!-- Room Selection Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider flex items-center">
+                        <i class="fa-solid fa-door-open mr-2 text-indigo-500"></i>특별실 선택
+                    </h2>
+                    <!-- Room Management Modal Trigger Button -->
+                    <button id="btnManageRooms" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center space-x-1 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded-md transition">
+                        <i class="fa-solid fa-gear"></i>
+                        <span>관리</span>
+                    </button>
+                </div>
+                <div class="space-y-2" id="roomList">
+                    <!-- Dynamic Room Options -->
+                </div>
+            </div>
+
+            <!-- Status Legend Card -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center">
+                    <i class="fa-solid fa-circle-info mr-2 text-indigo-500"></i>범례
+                </h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between p-2 rounded bg-emerald-50 text-emerald-700 border border-emerald-100">
+                        <span class="font-medium">예약 가능</span>
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div class="flex items-center justify-between p-2 rounded bg-rose-50 text-rose-700 border border-rose-100">
+                        <span class="font-medium">예약 완료</span>
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notice Card -->
+            <div class="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 text-xs text-indigo-900 space-y-1.5">
+                <div class="font-bold text-sm text-indigo-700 flex items-center mb-1">
+                    <i class="fa-solid fa-bullhorn mr-1.5"></i> 안내 사항
+                </div>
+                <p>• 1교시부터 8교시까지 예약 가능합니다.</p>
+                <p>• 원하시는 날짜와 교시를 클릭하여 예약을 신청하거나 취소하실 수 있습니다.</p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area: Calendar View -->
+        <section class="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+            
+            <!-- Calendar Navigation Header -->
+            <div class="p-4 sm:p-6 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50">
+                <div class="flex items-center space-x-4">
+                    <h2 id="currentMonthLabel" class="text-xl sm:text-2xl font-bold text-slate-800">2026년 10월</h2>
+                    <div class="flex items-center space-x-1 bg-white rounded-lg border border-slate-300 p-1 shadow-sm">
+                        <button id="btnPrevMonth" class="p-1.5 hover:bg-slate-100 rounded text-slate-600 transition">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <button id="btnToday" class="px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded transition">
+                            오늘
+                        </button>
+                        <button id="btnNextMonth" class="p-1.5 hover:bg-slate-100 rounded text-slate-600 transition">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <span id="selectedRoomBadge" class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-semibold border border-indigo-200">
+                        컴퓨터실 1
+                    </span>
+                    <button id="btnSync" class="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition" title="새로고침">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Calendar Days Header -->
+            <div class="calendar-grid border-b border-slate-200 bg-slate-100 text-center text-xs font-bold text-slate-600 py-2.5">
+                <div class="text-rose-500">일</div>
+                <div>월</div>
+                <div>화</div>
+                <div>수</div>
+                <div>목</div>
+                <div>금</div>
+                <div class="text-indigo-600">토</div>
+            </div>
+
+            <!-- Calendar Days Grid -->
+            <div id="calendarDays" class="calendar-grid flex-1 divide-x divide-y divide-slate-200 bg-slate-200/30 overflow-y-auto">
+                <!-- Days inserted dynamically -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal 1: Date & Period Detail Modal (Select 1-8 Period) -->
+    <div id="modalPeriodDetail" class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-slate-100 overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
+                <div>
+                    <span id="modalDateBadge" class="text-xs bg-indigo-500 text-indigo-100 px-2 py-0.5 rounded font-medium">2026-10-26 (월)</span>
+                    <h3 id="modalRoomTitle" class="text-lg font-bold mt-0.5">컴퓨터실 1 - 교시별 예약 현황</h3>
+                </div>
+                <button class="btnCloseModal text-indigo-200 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (1-8 Periods List) -->
+            <div class="p-6 space-y-3 max-h-[70vh] overflow-y-auto" id="periodListContainer">
+                <!-- Dynamic Periods -->
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-slate-50 px-6 py-3 text-right border-t border-slate-100">
+                <button class="btnCloseModal px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium text-sm rounded-lg transition">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Reservation Form Modal -->
+    <div id="modalReservationForm" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="bg-slate-800 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center">
+                    <i class="fa-regular fa-calendar-plus mr-2 text-indigo-400"></i>
+                    특별실 예약 신청
+                </h3>
+                <button id="btnCloseForm" class="text-slate-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="reservationForm" class="p-6 space-y-4">
+                <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100 text-xs text-indigo-900 space-y-1">
+                    <div><span class="font-semibold">장소:</span> <span id="formRoomText">컴퓨터실 1</span></div>
+                    <div><span class="font-semibold">일시:</span> <span id="formDateText">2026-10-26</span> (<span id="formPeriodText">3교시</span>)</div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">신청 교사명 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="inputTeacher" required placeholder="예: 홍길동"
+                           class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">사용 목적 / 학급 <span class="text-rose-500">*</span></label>
+                    <input type="text" id="inputPurpose" required placeholder="예: 2학년 1반 코딩 수업"
+                           class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">비고 (선택)</label>
+                    <textarea id="inputNote" rows="2" placeholder="필요 기자재 또는 참고사항"
+                              class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"></textarea>
+                </div>
+
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" id="btnCancelForm" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium transition">
+                        취소
+                    </button>
+                    <button type="submit" id="btnSubmitForm" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-md transition flex items-center">
+                        <span>예약 완료</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 3: Google Sheets API Settings & Guide Modal -->
+    <div id="modalSettings" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center">
+                    <i class="fa-brands fa-google-drive text-emerald-400 mr-2"></i>
+                    구글 시트 연동 설정 & 가이드
+                </h3>
+                <button id="btnCloseSettings" class="text-slate-400 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-6 text-sm text-slate-600">
+                <!-- Step 1 -->
+                <div class="space-y-2">
+                    <h4 class="font-bold text-slate-800 flex items-center">
+                        <span class="w-5 h-5 bg-indigo-100 text-indigo-700 rounded-full text-xs flex items-center justify-center mr-2">1</span>
+                        Google Apps Script 배포 URL 입력
+                    </h4>
+                    <p class="text-xs text-slate-500">구글 스프레드시트와 연결된 앱 스크립트 웹 앱 URL을 붙여넣으세요.</p>
+                    <input type="text" id="inputGasUrl" placeholder="https://script.google.com/macros/s/.../exec"
+                           class="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <!-- Step 2 Code Setup Guide -->
+                <div class="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div class="flex justify-between items-center">
+                        <h4 class="font-bold text-slate-800 text-xs">Google Apps Script (Code.gs) 스크립트</h4>
+                        <button id="btnCopyGasCode" class="text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded transition flex items-center">
+                            <i class="fa-regular fa-copy mr-1"></i> 코드 복사
+                        </button>
+                    </div>
+                    <pre id="gasCodeBlock" class="bg-slate-900 text-slate-200 p-3 rounded-lg text-[11px] font-mono overflow-x-auto leading-relaxed max-h-48">
+function doGet() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) return ContentService.createTextOutput(JSON.stringify([])).setMimeType(ContentService.MimeType.JSON);
+  
+  const headers = data[0];
+  const result = [];
+  for (let i = 1; i < data.length; i++) {
+    let row = data[i];
+    result.push({
+      id: row[0],
+      room: row[1],
+      date: Utilities.formatDate(new Date(row[2]), "GMT+9", "yyyy-MM-dd"),
+      period: row[3],
+      teacher: row[4],
+      purpose: row[5],
+      note: row[6] || ""
+    });
+  }
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function doPost(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  const params = JSON.parse(e.postData.contents);
+  
+  if (params.action === "ADD") {
+    sheet.appendRow([params.id, params.room, params.date, params.period, params.teacher, params.purpose, params.note]);
+  } else if (params.action === "DELETE") {
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === params.id) {
+        sheet.deleteRow(i + 1);
+        break;
+      }
+    }
+  }
+  return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
+}</pre>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-3 text-right border-t border-slate-100 space-x-2">
+                <button id="btnSaveSettings" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium text-sm transition">
+                    설정 저장하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 4: Room Management Modal (Add, Edit, Delete Rooms) -->
+    <div id="modalManageRooms" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center">
+                    <i class="fa-solid fa-sliders mr-2 text-indigo-200"></i>
+                    특별실 목록 관리
+                </h3>
+                <button id="btnCloseRoomManage" class="text-indigo-200 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-5">
+                <!-- Add New Room Input -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-700">새 특별실 추가</label>
+                    <div class="flex space-x-2">
+                        <input type="text" id="inputNewRoomName" placeholder="예: 미술실, 방송실"
+                               class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                        <button id="btnAddRoom" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-sm transition flex items-center whitespace-nowrap">
+                            <i class="fa-solid fa-plus mr-1"></i> 추가
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="border-slate-100">
+
+                <!-- Dynamic Existing Rooms List -->
+                <div class="space-y-2">
+                    <label class="block text-xs font-bold text-slate-700 mb-2">등록된 특별실 목록</label>
+                    <div id="managedRoomListContainer" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        <!-- Managed Room Items dynamically populated -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 px-6 py-3 text-right border-t border-slate-100">
+                <button id="btnCloseRoomManageBottom" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium text-sm rounded-lg transition">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 5: Batch Routine Schedule Modal (Fixed Weekly Timetable) -->
+    <div id="modalRoutine" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-100 overflow-hidden">
+            <div class="bg-indigo-600 text-white px-6 py-4 flex justify-between items-center">
+                <h3 class="font-bold text-base flex items-center">
+                    <i class="fa-regular fa-calendar-check mr-2 text-indigo-200"></i>
+                    고정 시간표 일괄 예약 (정보수업 등)
+                </h3>
+                <button id="btnCloseRoutine" class="text-indigo-200 hover:text-white text-xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="routineForm" class="p-6 space-y-4">
+                <div class="bg-indigo-50 p-3 rounded-lg border border-indigo-100 text-xs text-indigo-900">
+                    <i class="fa-solid fa-circle-info mr-1 text-indigo-600"></i>
+                    선택한 기간 동안 특정 요일·교시에 지정한 특별실 예약을 일괄 등록합니다. (이미 예약된 교시는 자동으로 제외됩니다)
+                </div>
+
+                <!-- Select Target Room -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">대상 특별실 <span class="text-rose-500">*</span></label>
+                    <select id="routineRoom" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <!-- Populated dynamically -->
+                    </select>
+                </div>
+
+                <!-- Date Range -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">시작일 <span class="text-rose-500">*</span></label>
+                        <input type="date" id="routineStartDate" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">종료일 <span class="text-rose-500">*</span></label>
+                        <input type="date" id="routineEndDate" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <!-- Day of Week Select -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">반복 요일 선택 <span class="text-rose-500">*</span></label>
+                    <div class="grid grid-cols-5 gap-2 text-xs">
+                        <label class="flex items-center justify-center p-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-indigo-50">
+                            <input type="checkbox" value="1" class="routine-day mr-1.5 accent-indigo-600"> 월요일
+                        </label>
+                        <label class="flex items-center justify-center p-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-indigo-50">
+                            <input type="checkbox" value="2" class="routine-day mr-1.5 accent-indigo-600"> 화요일
+                        </label>
+                        <label class="flex items-center justify-center p-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-indigo-50">
+                            <input type="checkbox" value="3" class="routine-day mr-1.5 accent-indigo-600"> 수요일
+                        </label>
+                        <label class="flex items-center justify-center p-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-indigo-50">
+                            <input type="checkbox" value="4" class="routine-day mr-1.5 accent-indigo-600"> 목요일
+                        </label>
+                        <label class="flex items-center justify-center p-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-indigo-50">
+                            <input type="checkbox" value="5" class="routine-day mr-1.5 accent-indigo-600"> 금요일
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Period Select -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">반복 교시 선택 <span class="text-rose-500">*</span></label>
+                    <div class="grid grid-cols-4 gap-2 text-xs">
+                        ${[1,2,3,4,5,6,7,8].map(p => `
+                            <label class="flex items-center justify-center p-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-indigo-50">
+                                <input type="checkbox" value="${p}" class="routine-period mr-1.5 accent-indigo-600"> ${p}교시
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- Teacher & Purpose -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">신청 교사명 <span class="text-rose-500">*</span></label>
+                        <input type="text" id="routineTeacher" required placeholder="예: 박정보" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">사용 목적 / 학급 <span class="text-rose-500">*</span></label>
+                        <input type="text" id="routinePurpose" required placeholder="예: 고정 정보 수업" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">비고 (선택)</label>
+                    <input type="text" id="routineNote" placeholder="예: 2학기 정규 수업" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+
+                <div class="pt-2 flex justify-end space-x-2 border-t border-slate-100">
+                    <button type="button" id="btnCancelRoutine" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium transition">
+                        취소
+                    </button>
+                    <button type="submit" id="btnSubmitRoutine" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-md transition flex items-center">
+                        <i class="fa-solid fa-calendar-plus mr-1.5"></i>
+                        <span>일괄 예약 실행</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-800 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 text-sm transform translate-y-20 opacity-0 transition-all duration-300">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toastMessage">처리가 완료되었습니다.</span>
+    </div>
+
+    <script>
+        // Default Rooms Fallback
+        const defaultRooms = ['컴퓨터실 1', '컴퓨터실 2', '과학실 1', '음악실', '강당'];
+
+        // Load saved rooms from LocalStorage or default
+        function getSavedRooms() {
+            const saved = localStorage.getItem('special_rooms_list');
+            return saved ? JSON.parse(saved) : defaultRooms;
+        }
+
+        // Save rooms to LocalStorage
+        function saveRoomsToStorage(rooms) {
+            localStorage.setItem('special_rooms_list', JSON.stringify(rooms));
+        }
+
+        // State Management
+        const state = {
+            rooms: getSavedRooms(),
+            selectedRoom: getSavedRooms()[0] || '컴퓨터실 1',
+            currentDate: new Date(), // Current Date
+            selectedDateStr: '',
+            selectedPeriod: null,
+            reservations: [],
+            gasUrl: localStorage.getItem('gas_app_url') || ''
+        };
+
+        // Mock Initial Data for Demonstration
+        const mockReservations = [
+            { id: 'MOCK_1', room: '컴퓨터실 1', date: '2026-10-26', period: 1, teacher: '김철수', purpose: '3학년 SW 실습', note: '' },
+            { id: 'MOCK_2', room: '컴퓨터실 1', date: '2026-10-26', period: 2, teacher: '김철수', purpose: '3학년 SW 실습', note: '' },
+            { id: 'MOCK_3', room: '컴퓨터실 1', date: '2026-10-26', period: 5, teacher: '이영희', purpose: '정보 동아리 활동', note: '노트북 대여' },
+            { id: 'MOCK_4', room: '과학실 1', date: '2026-10-27', period: 3, teacher: '박민수', purpose: '1학년 화학 실험', note: '보호구 착용' },
+        ];
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            initRoomList();
+            initCalendar();
+            bindEvents();
+            fetchReservations();
+        });
+
+        // Initialize Rooms Sidebar Menu
+        function initRoomList() {
+            const container = document.getElementById('roomList');
+            if (state.rooms.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 py-2 text-center">등록된 특별실이 없습니다.</p>`;
+                return;
+            }
+
+            // Ensure selectedRoom is valid
+            if (!state.rooms.includes(state.selectedRoom)) {
+                state.selectedRoom = state.rooms[0] || '';
+            }
+
+            container.innerHTML = state.rooms.map(room => `
+                <button onclick="selectRoom('${room}')" 
+                        class="room-btn w-full text-left px-3.5 py-2.5 rounded-xl font-medium text-sm flex items-center justify-between transition-all ${
+                            state.selectedRoom === room 
+                            ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' 
+                            : 'text-slate-600 hover:bg-slate-100'
+                        }">
+                    <span class="truncate mr-2">${room}</span>
+                    <i class="fa-solid fa-chevron-right text-xs ${state.selectedRoom === room ? 'text-indigo-200' : 'text-slate-400'}"></i>
+                </button>
+            `).join('');
+            document.getElementById('selectedRoomBadge').innerText = state.selectedRoom || '특별실 없음';
+        }
+
+        // Render Managed Rooms in Management Modal
+        function renderManagedRooms() {
+            const container = document.getElementById('managedRoomListContainer');
+            if (state.rooms.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 py-3 text-center">등록된 특별실이 없습니다. 위에서 새로 추가해주세요.</p>`;
+                return;
+            }
+
+            container.innerHTML = state.rooms.map((room, index) => `
+                <div class="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <span class="text-sm font-semibold text-slate-700 truncate mr-2" id="roomNameText_${index}">${room}</span>
+                    
+                    <div class="flex items-center space-x-1 flex-shrink-0">
+                        <button onclick="editRoomName(${index})" class="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition" title="이름 수정">
+                            <i class="fa-solid fa-pen-to-square text-xs"></i>
+                        </button>
+                        <button onclick="deleteRoom(${index})" class="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition" title="특별실 삭제">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Add Room Logic
+        function addNewRoom() {
+            const input = document.getElementById('inputNewRoomName');
+            const roomName = input.value.trim();
+
+            if (!roomName) {
+                showToast('특별실 이름을 입력해주세요.', 'error');
+                return;
+            }
+
+            if (state.rooms.includes(roomName)) {
+                showToast('이미 존재하는 특별실 이름입니다.', 'error');
+                return;
+            }
+
+            state.rooms.push(roomName);
+            saveRoomsToStorage(state.rooms);
+            input.value = '';
+            
+            renderManagedRooms();
+            initRoomList();
+            renderCalendar();
+            showToast(`'${roomName}' 특별실이 추가되었습니다.`);
+        }
+
+        // Edit Room Name Logic
+        function editRoomName(index) {
+            const oldName = state.rooms[index];
+            const newName = prompt('변경할 특별실 이름을 입력하세요:', oldName);
+
+            if (newName === null) return; // User cancelled
+            const trimmedName = newName.trim();
+
+            if (!trimmedName) {
+                showToast('올바른 이름을 입력해주세요.', 'error');
+                return;
+            }
+
+            if (trimmedName !== oldName && state.rooms.includes(trimmedName)) {
+                showToast('이미 존재하는 특별실 이름입니다.', 'error');
+                return;
+            }
+
+            // Update reservations associated with oldName
+            state.reservations.forEach(res => {
+                if (res.room === oldName) {
+                    res.room = trimmedName;
+                }
+            });
+
+            state.rooms[index] = trimmedName;
+            if (state.selectedRoom === oldName) {
+                state.selectedRoom = trimmedName;
+            }
+
+            saveRoomsToStorage(state.rooms);
+            renderManagedRooms();
+            initRoomList();
+            renderCalendar();
+            showToast(`특별실 이름이 '${trimmedName}'(으)로 변경되었습니다.`);
+        }
+
+        // Delete Room Logic
+        function deleteRoom(index) {
+            const roomToDelete = state.rooms[index];
+            
+            if (!confirm(`'${roomToDelete}' 특별실을 삭제하시겠습니까?\n해당 특별실의 예약 정보는 유지되지만 캘린더 목록에서 제외됩니다.`)) {
+                return;
+            }
+
+            state.rooms.splice(index, 1);
+            saveRoomsToStorage(state.rooms);
+
+            if (state.selectedRoom === roomToDelete) {
+                state.selectedRoom = state.rooms[0] || '';
+            }
+
+            renderManagedRooms();
+            initRoomList();
+            renderCalendar();
+            showToast(`'${roomToDelete}' 특별실이 삭제되었습니다.`);
+        }
+
+        // Room Selection
+        function selectRoom(roomName) {
+            state.selectedRoom = roomName;
+            initRoomList();
+            renderCalendar();
+        }
+
+        // Calendar Render Logic
+        function initCalendar() {
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const calendarDays = document.getElementById('calendarDays');
+            const currentMonthLabel = document.getElementById('currentMonthLabel');
+            
+            const year = state.currentDate.getFullYear();
+            const month = state.currentDate.getMonth();
+
+            currentMonthLabel.innerText = `${year}년 ${month + 1}월`;
+
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            
+            const startDayOfWeek = firstDay.getDay(); // 0: Sun, 6: Sat
+            const totalDays = lastDay.getDate();
+
+            const prevMonthLastDay = new Date(year, month, 0).getDate();
+
+            let html = '';
+
+            // Previous Month Fill Days
+            for (let i = startDayOfWeek - 1; i >= 0; i--) {
+                const dayNum = prevMonthLastDay - i;
+                html += `
+                    <div class="bg-slate-50/50 p-1 sm:p-2 min-h-[90px] sm:min-h-[110px] text-slate-300 text-xs">
+                        <span class="font-semibold">${dayNum}</span>
+                    </div>
+                `;
+            }
+
+            // Current Month Days
+            const today = new Date();
+            for (let day = 1; day <= totalDays; day++) {
+                const dateStr = formatDate(year, month + 1, day);
+                const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === day;
+                const dayOfWeek = new Date(year, month, day).getDay();
+
+                let textColor = 'text-slate-700';
+                if (dayOfWeek === 0) textColor = 'text-rose-500';
+                if (dayOfWeek === 6) textColor = 'text-indigo-600';
+
+                // Get Reservations for this Date and Room
+                const dayReservations = state.reservations.filter(
+                    r => r.room === state.selectedRoom && r.date === dateStr
+                );
+
+                const reservedPeriodsCount = dayReservations.length;
+
+                html += `
+                    <div onclick="openPeriodModal('${dateStr}')" 
+                         class="bg-white p-1.5 sm:p-2 min-h-[90px] sm:min-h-[110px] hover:bg-indigo-50/40 cursor-pointer transition flex flex-col justify-between group relative">
+                        <div class="flex justify-between items-start">
+                            <span class="inline-block w-6 h-6 leading-6 text-center rounded-full text-xs font-bold ${textColor} ${
+                                isToday ? 'bg-indigo-600 text-white shadow-sm' : ''
+                            }">
+                                ${day}
+                            </span>
+                            ${reservedPeriodsCount > 0 ? `
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700">
+                                    ${reservedPeriodsCount}/8 예약
+                                </span>
+                            ` : `
+                                <span class="hidden group-hover:inline-block text-[10px] font-medium text-emerald-600">
+                                    예약 가능
+                                </span>
+                            `}
+                        </div>
+
+                        <!-- Mini Period Badges (1 ~ 8) -->
+                        <div class="grid grid-cols-4 gap-1 mt-2">
+                            ${[1, 2, 3, 4, 5, 6, 7, 8].map(p => {
+                                const isReserved = dayReservations.some(r => Number(r.period) === p);
+                                return `
+                                    <div class="h-3.5 sm:h-4 text-[9px] font-bold rounded flex items-center justify-center transition-all ${
+                                        isReserved 
+                                        ? 'bg-rose-500 text-white shadow-xs' 
+                                        : 'bg-slate-100 text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-700'
+                                    }">
+                                        ${p}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Next Month Fill Days to complete 7x5 or 7x6 grid
+            const totalCellsSoFar = startDayOfWeek + totalDays;
+            const remainingCells = (7 - (totalCellsSoFar % 7)) % 7;
+            for (let i = 1; i <= remainingCells; i++) {
+                html += `
+                    <div class="bg-slate-50/50 p-1 sm:p-2 min-h-[90px] sm:min-h-[110px] text-slate-300 text-xs">
+                        <span class="font-semibold">${i}</span>
+                    </div>
+                `;
+            }
+
+            calendarDays.innerHTML = html;
+        }
+
+        // Open 1~8 Period Detail Modal
+        function openPeriodModal(dateStr) {
+            state.selectedDateStr = dateStr;
+            const dateObj = new Date(dateStr);
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const formattedDateBadge = `${dateStr} (${days[dateObj.getDay()]})`;
+
+            document.getElementById('modalDateBadge').innerText = formattedDateBadge;
+            document.getElementById('modalRoomTitle').innerText = `${state.selectedRoom} - 예약 현황`;
+
+            const container = document.getElementById('periodListContainer');
+            
+            // Filter Current Room & Date Reservations
+            const dayReservations = state.reservations.filter(
+                r => r.room === state.selectedRoom && r.date === dateStr
+            );
+
+            let html = '';
+
+            for (let p = 1; p <= 8; p++) {
+                const reservation = dayReservations.find(r => Number(r.period) === p);
+
+                if (reservation) {
+                    // Reserved Block
+                    html += `
+                        <div class="p-3.5 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="w-8 h-8 rounded-lg bg-rose-500 text-white text-xs font-bold flex items-center justify-center shadow-sm">
+                                    ${p}교시
+                                </span>
+                                <div>
+                                    <div class="text-sm font-bold text-rose-900 flex items-center space-x-2">
+                                        <span>${reservation.teacher} 선생님</span>
+                                        <span class="text-xs font-normal text-rose-700">(${reservation.purpose})</span>
+                                    </div>
+                                    ${reservation.note ? `<p class="text-xs text-rose-600 mt-0.5">비고: ${reservation.note}</p>` : ''}
+                                </div>
+                            </div>
+                            <button onclick="cancelReservation('${reservation.id}')" class="px-2.5 py-1.5 bg-white hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-lg border border-rose-300 transition flex items-center space-x-1">
+                                <i class="fa-solid fa-trash-can"></i>
+                                <span>취소</span>
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    // Available Block
+                    html += `
+                        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 hover:border-emerald-300 hover:bg-emerald-50/50 transition flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <span class="w-8 h-8 rounded-lg bg-slate-200 text-slate-700 text-xs font-bold flex items-center justify-center">
+                                    ${p}교시
+                                </span>
+                                <span class="text-sm font-semibold text-emerald-600">
+                                    <i class="fa-solid fa-circle-check mr-1 text-xs"></i>예약 가능
+                                </span>
+                            </div>
+                            <button onclick="openReservationForm(${p})" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition flex items-center space-x-1">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                                <span>예약하기</span>
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+
+            container.innerHTML = html;
+            document.getElementById('modalPeriodDetail').classList.remove('hidden');
+        }
+
+        // Open Booking Form
+        function openReservationForm(period) {
+            state.selectedPeriod = period;
+            document.getElementById('formRoomText').innerText = state.selectedRoom;
+            document.getElementById('formDateText').innerText = state.selectedDateStr;
+            document.getElementById('formPeriodText').innerText = `${period}교시`;
+
+            document.getElementById('inputTeacher').value = '';
+            document.getElementById('inputPurpose').value = '';
+            document.getElementById('inputNote').value = '';
+
+            document.getElementById('modalReservationForm').classList.remove('hidden');
+        }
+
+        // Submit Reservation
+        async function handleReservationSubmit(e) {
+            e.preventDefault();
+
+            const newReservation = {
+                id: 'RES_' + Date.now(),
+                room: state.selectedRoom,
+                date: state.selectedDateStr,
+                period: state.selectedPeriod,
+                teacher: document.getElementById('inputTeacher').value.trim(),
+                purpose: document.getElementById('inputPurpose').value.trim(),
+                note: document.getElementById('inputNote').value.trim()
+            };
+
+            const submitBtn = document.getElementById('btnSubmitForm');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> 처리중...`;
+
+            try {
+                if (state.gasUrl) {
+                    // Save to Google Sheets
+                    await fetch(state.gasUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'ADD', ...newReservation })
+                    });
+                }
+                
+                // Add to Local State
+                state.reservations.push(newReservation);
+                showToast('예약이 성공적으로 등록되었습니다.');
+                
+                // Close Form & Refresh Modals
+                document.getElementById('modalReservationForm').classList.add('hidden');
+                openPeriodModal(state.selectedDateStr);
+                renderCalendar();
+
+            } catch (err) {
+                console.error(err);
+                showToast('예약 등록 중 오류가 발생했습니다.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<span>예약 완료</span>`;
+            }
+        }
+
+        // Cancel Reservation
+        async function cancelReservation(id) {
+            if (!confirm('정말로 이 예약을 취소하시겠습니까?')) return;
+
+            try {
+                if (state.gasUrl) {
+                    await fetch(state.gasUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'DELETE', id: id })
+                    });
+                }
+
+        // Handle Batch Routine Form Submit
+        async function handleRoutineSubmit(e) {
+            e.preventDefault();
+
+            const targetRoom = document.getElementById('routineRoom').value;
+            const startDateStr = document.getElementById('routineStartDate').value;
+            const endDateStr = document.getElementById('routineEndDate').value;
+            const teacher = document.getElementById('routineTeacher').value.trim();
+            const purpose = document.getElementById('routinePurpose').value.trim();
+            const note = document.getElementById('routineNote').value.trim();
+
+            const selectedDays = Array.from(document.querySelectorAll('.routine-day:checked')).map(cb => parseInt(cb.value));
+            const selectedPeriods = Array.from(document.querySelectorAll('.routine-period:checked')).map(cb => parseInt(cb.value));
+
+            if (selectedDays.length === 0) {
+                showToast('최소 하나 이상의 요일을 선택해주세요.', 'error');
+                return;
+            }
+
+            if (selectedPeriods.length === 0) {
+                showToast('최소 하나 이상의 교시를 선택해주세요.', 'error');
+                return;
+            }
+
+            const start = new Date(startDateStr);
+            const end = new Date(endDateStr);
+
+            if (start > end) {
+                showToast('종료일은 시작일 이후여야 합니다.', 'error');
+                return;
+            }
+
+            const newReservations = [];
+            let curr = new Date(start);
+
+            // Generate reservations for dates within range matching selected days & periods
+            while (curr <= end) {
+                const dayOfWeek = curr.getDay(); // 0:Sun, 1:Mon ... 6:Sat
+                if (selectedDays.includes(dayOfWeek)) {
+                    const dateStr = formatDate(curr.getFullYear(), curr.getMonth() + 1, curr.getDate());
+
+                    selectedPeriods.forEach(period => {
+                        // Check if already reserved
+                        const exists = state.reservations.some(
+                            r => r.room === targetRoom && r.date === dateStr && Number(r.period) === Number(period)
+                        );
+
+                        if (!exists) {
+                            newReservations.push({
+                                id: 'RES_ROUTINE_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                                room: targetRoom,
+                                date: dateStr,
+                                period: period,
+                                teacher: teacher,
+                                purpose: purpose,
+                                note: note ? `[고정시간표] ${note}` : '[고정시간표]'
+                            });
+                        }
+                    });
+                }
+                curr.setDate(curr.getDate() + 1);
+            }
+
+            if (newReservations.length === 0) {
+                showToast('해당 기간에 등록 가능한 빈 교시가 없거나 해당되는 요일이 없습니다.', 'error');
+                return;
+            }
+
+            const submitBtn = document.getElementById('btnSubmitRoutine');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i> 일괄 생성 중 (${newReservations.length}건)...`;
+
+            try {
+                // Post each new reservation if GAS is linked
+                if (state.gasUrl) {
+                    for (const res of newReservations) {
+                        await fetch(state.gasUrl, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'ADD', ...res })
+                        });
+                    }
+                }
+
+                // Add to local state
+                state.reservations.push(...newReservations);
+                showToast(`총 ${newReservations.length}건의 고정 수업 예약이 등록되었습니다.`);
+
+                document.getElementById('modalRoutine').classList.add('hidden');
+                renderCalendar();
+
+            } catch (err) {
+                console.error(err);
+                showToast('일괄 예약 중 오류가 발생했습니다.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-calendar-plus mr-1.5"></i><span>일괄 예약 실행</span>`;
+            }
+        }
+
+        // Fetch Reservations (GAS or Local Mock)
+        async function fetchReservations() {
+            if (!state.gasUrl) {
+                // Use Local Mock Data
+                state.reservations = [...mockReservations];
+                renderCalendar();
+                return;
+            }
+
+            try {
+                const res = await fetch(state.gasUrl);
+                const data = await res.json();
+                state.reservations = data;
+                renderCalendar();
+                showToast('데이터를 최신 상태로 동기화했습니다.');
+            } catch (err) {
+                console.warn('GAS Fetch Failed, fallback to mock data:', err);
+                state.reservations = [...mockReservations];
+                renderCalendar();
+            }
+        }
+
+        // Event Bindings
+        function bindEvents() {
+            // Month Navigation
+            document.getElementById('btnPrevMonth').addEventListener('click', () => {
+                state.currentDate.setMonth(state.currentDate.getMonth() - 1);
+                renderCalendar();
+            });
+
+            document.getElementById('btnNextMonth').addEventListener('click', () => {
+                state.currentDate.setMonth(state.currentDate.getMonth() + 1);
+                renderCalendar();
+            });
+
+            document.getElementById('btnToday').addEventListener('click', () => {
+                state.currentDate = new Date();
+                renderCalendar();
+            });
+
+            document.getElementById('btnSync').addEventListener('click', () => {
+                fetchReservations();
+            });
+
+            // Modal Close Buttons
+            document.querySelectorAll('.btnCloseModal').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById('modalPeriodDetail').classList.add('hidden');
+                });
+            });
+
+            document.getElementById('btnCloseForm').addEventListener('click', () => {
+                document.getElementById('modalReservationForm').classList.add('hidden');
+            });
+
+            document.getElementById('btnCancelForm').addEventListener('click', () => {
+                document.getElementById('modalReservationForm').classList.add('hidden');
+            });
+
+            // Room Management Modal Events
+            document.getElementById('btnManageRooms').addEventListener('click', () => {
+                renderManagedRooms();
+                document.getElementById('modalManageRooms').classList.remove('hidden');
+            });
+
+            document.getElementById('btnCloseRoomManage').addEventListener('click', () => {
+                document.getElementById('modalManageRooms').classList.add('hidden');
+            });
+
+            document.getElementById('btnCloseRoomManageBottom').addEventListener('click', () => {
+                document.getElementById('modalManageRooms').classList.add('hidden');
+            });
+
+            document.getElementById('btnAddRoom').addEventListener('click', addNewRoom);
+
+            document.getElementById('inputNewRoomName').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addNewRoom();
+                }
+            });
+
+            // Routine Modal Events
+            document.getElementById('btnOpenRoutine').addEventListener('click', () => {
+                const roomSelect = document.getElementById('routineRoom');
+                roomSelect.innerHTML = state.rooms.map(r => `<option value="${r}">${r}</option>`).join('');
+                roomSelect.value = state.selectedRoom;
+
+                // Set default dates (Today ~ 3 months later)
+                const today = new Date();
+                const threeMonthsLater = new Date();
+                threeMonthsLater.setMonth(today.getMonth() + 3);
+
+                document.getElementById('routineStartDate').value = formatDate(today.getFullYear(), today.getMonth() + 1, today.getDate());
+                document.getElementById('routineEndDate').value = formatDate(threeMonthsLater.getFullYear(), threeMonthsLater.getMonth() + 1, threeMonthsLater.getDate());
+
+                document.getElementById('modalRoutine').classList.remove('hidden');
+            });
+
+            document.getElementById('btnCloseRoutine').addEventListener('click', () => {
+                document.getElementById('modalRoutine').classList.add('hidden');
+            });
+
+            document.getElementById('btnCancelRoutine').addEventListener('click', () => {
+                document.getElementById('modalRoutine').classList.add('hidden');
+            });
+
+            document.getElementById('routineForm').addEventListener('submit', handleRoutineSubmit);
+
+            // Reservation Submit
+            document.getElementById('reservationForm').addEventListener('submit', handleReservationSubmit);
+
+            // Settings Modal
+            document.getElementById('btnOpenSettings').addEventListener('click', () => {
+                document.getElementById('inputGasUrl').value = state.gasUrl;
+                document.getElementById('modalSettings').classList.remove('hidden');
+            });
+
+            document.getElementById('btnCloseSettings').addEventListener('click', () => {
+                document.getElementById('modalSettings').classList.add('hidden');
+            });
+
+            document.getElementById('btnSaveSettings').addEventListener('click', () => {
+                const url = document.getElementById('inputGasUrl').value.trim();
+                state.gasUrl = url;
+                localStorage.setItem('gas_app_url', url);
+                document.getElementById('modalSettings').classList.add('hidden');
+                fetchReservations();
+                showToast('설정이 저장되었습니다.');
+            });
+
+            // Copy GAS Code
+            document.getElementById('btnCopyGasCode').addEventListener('click', () => {
+                const codeText = document.getElementById('gasCodeBlock').innerText;
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = codeText;
+                document.body.appendChild(tempTextArea);
+                tempTextArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempTextArea);
+                showToast('코드가 클립보드에 복사되었습니다!');
+            });
+        }
+
+        // Helper: Date Formatting (YYYY-MM-DD)
+        function formatDate(year, month, day) {
+            const m = month < 10 ? `0${month}` : month;
+            const d = day < 10 ? `0${day}` : day;
+            return `${year}-${m}-${d}`;
+        }
+
+        // Helper: Toast Notification
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMsg.innerText = msg;
+            if (type === 'error') {
+                toastIcon.className = 'fa-solid fa-circle-exclamation text-rose-400 text-lg';
+            } else {
+                toastIcon.className = 'fa-solid fa-circle-check text-emerald-400 text-lg';
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
